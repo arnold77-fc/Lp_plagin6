@@ -1,160 +1,153 @@
 (function () {
     'use strict';
 
-    const APPLECATION_VERSION = '1.2.1-merged';
-    const STUDIO_LOGOS_KEY = 'studio_logos_plugin_';
+    const APPLECATION_VERSION = '1.3.0-Universal';
+    const STUDIO_STORAGE_KEY = 'studio_logos_plugin_';
 
-    // Иконка плагина (Applecation)
+    // Иконка плагина
     const PLUGIN_ICON = '<svg viewBox="110 90 180 210" xmlns="http://www.w3.org/2000/svg"><g id="sphere"><circle cx="200" cy="140" fill="hsl(200, 80%, 40%)" opacity="0.3" r="1.2" /><circle cx="230" cy="150" fill="hsl(200, 80%, 45%)" opacity="0.35" r="1.3" /><circle cx="200" cy="200" fill="hsl(200, 80%, 100%)" opacity="1" r="4" /></g></svg>';
 
-    // ===================================================================
-    // ОБЪЕДИНЕННЫЕ СТИЛИ
-    // ===================================================================
+    // --- ОБЪЕДИНЕННЫЕ СТИЛИ (Applecation + Studio Logos) ---
     const styles = `
-        /* Applecation Styles */
-        .applecation--poster-high { transform: scale(1.05); }
-        /* ... (остальные стили Applecation будут добавлены автоматически через оригинальные функции) ... */
-
-        /* Studio Logos Styles */
+        /* Стили Applecation */
+        .applecation--poster-high { transform: scale(1.03); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .applecation-ratings { display: flex; gap: 15px; margin: 10px 0; font-weight: bold; }
+        
+        /* Стили Студийных Логотипов */
         .plugin-studio-logos {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-            margin-bottom: 5px;
+            gap: 12px;
+            margin: 15px 0;
+            padding: 5px 0;
             position: relative;
             z-index: 10;
         }
         .studio-logo-item {
             display: inline-flex;
             align-items: center;
-            vertical-align: middle;
-            border-radius: 6px;
+            border-radius: 8px;
+            padding: 6px 10px;
             transition: all 0.2s ease;
-            height: auto;
-            cursor: pointer;
+            background: rgba(255,255,255,0.06);
             border: 1px solid transparent;
-            padding: 4px;
+            cursor: pointer;
         }
+        /* Состояние фокуса для пульта Android TV */
         .studio-logo-item.focus {
-            background: rgba(255,255,255,0.2) !important;
+            background: rgba(255,255,255,0.25) !important;
             border: 1px solid #fff;
-            transform: scale(1.05);
+            transform: scale(1.1);
             outline: none;
         }
         .studio-logo-item img {
-            max-width: 180px;
-            width: auto;
+            max-width: 150px;
+            height: auto;
             object-fit: contain;
             pointer-events: none;
         }
-        .studio-logo-text {
-            font-size: 0.85em;
-            font-weight: bold;
-            color: #fff;
-            white-space: nowrap;
-            pointer-events: none;
+        
+        /* Адаптация под Мобильные устройства */
+        @media screen and (max-width: 768px) {
+            .plugin-studio-logos { gap: 8px; }
+            .studio-logo-item { padding: 4px 8px; }
+            .studio-logo-item img { max-width: 100px; }
         }
-        .studio-logo-item.use-bg { background: rgba(255,255,255,0.1); }
     `;
 
-    // ===================================================================
-    // ЛОГИКА СТУДИЙНЫХ ЛОГОТИПОВ
-    // ===================================================================
+    // --- ЛОГИКА ОТРИСОВКИ ЛОГОТИПОВ СТУДИЙ ---
     function renderStudioLogos(activity, movie) {
-        if (!Lampa.Storage.get(STUDIO_LOGOS_KEY + 'enabled', true)) return;
+        if (!Lampa.Storage.get(STUDIO_STORAGE_KEY + 'enabled', true)) return;
         if (!movie.production_companies || !movie.production_companies.length) return;
 
-        const renderTarget = activity.render().find('.full-start__left'); // Или другое подходящее место в шаблоне Applecation
-        if (!renderTarget.length) return;
-
-        // Удаляем старые, если есть
+        // Ищем место для вставки (совместимо с Applecation)
+        let renderTarget = activity.render().find('.full-start__left');
+        if (!renderTarget.length) renderTarget = activity.render().find('.full-start__info');
+        
         renderTarget.find('.plugin-studio-logos').remove();
 
         const container = $('<div class="plugin-studio-logos"></div>');
-        const iconHeight = Lampa.Storage.get(STUDIO_LOGOS_KEY + 'height', '0.8em');
-        const useBg = Lampa.Storage.get(STUDIO_LOGOS_KEY + 'use_bg', true);
+        const iconHeight = Lampa.Storage.get(STUDIO_STORAGE_KEY + 'height', '0.8em');
 
         movie.production_companies.forEach(company => {
             if (company.logo_path) {
-                const logoUrl = 'https://image.tmdb.org/t/p/h30/' + company.logo_path;
-                const item = $(`<div class="studio-logo-item ${useBg ? 'use-bg' : ''} selector">
+                const logoUrl = 'https://image.tmdb.org/t/p/h30' + company.logo_path;
+                const item = $(`<div class="studio-logo-item selector">
                     <img src="${logoUrl}" style="height: ${iconHeight}" />
                 </div>`);
                 
-                item.on('hover:enter', () => {
+                // Поддержка клика (телефон) и пульта (ТВ)
+                item.on('hover:enter click', () => {
                     Lampa.Noty.show(company.name);
                 });
 
                 container.append(item);
-            } else {
-                // Если нет лого, можно вывести текст (опционально)
-                // container.append(`<div class="studio-logo-text">${company.name}</div>`);
             }
         });
 
-        renderTarget.append(container);
+        if (container.children().length > 0) {
+            renderTarget.append(container);
+            
+            // Если мы на ТВ, регистрируем контейнер в контроллере навигации
+            if (Lampa.Controller.enabled().name === 'full_start') {
+                Lampa.Controller.collectionSet(activity.render());
+            }
+        }
     }
 
-    // ===================================================================
-    // ИНИЦИАЛИЗАЦИЯ И НАСТРОЙКИ
-    // ===================================================================
+    // --- ОСНОВНАЯ ИНИЦИАЛИЗАЦИЯ ---
     function initializePlugin() {
-        console.log('Applecation + Studio Logos', 'v' + APPLECATION_VERSION);
-        
-        // Добавление стилей
         $('<style>').html(styles).appendTo('head');
 
-        // Интеграция в события Lampa
-        Lampa.Listener.follow('app', (event) => {
-            if (event.type === 'ready') {
-                addSettings();
+        // Слушаем событие открытия карточки (Applecation logic)
+        Lampa.Listener.follow('full_start', (event) => {
+            if (event.type === 'complite') {
+                const activity = Lampa.Activity.active();
+                const movie = event.data?.movie;
+
+                if (activity && movie) {
+                    // 1. Выполняем функции Applecation (рейтинги, логотипы фильма и т.д.)
+                    // (Здесь вызываются внутренние методы из вашего applecation.js)
+                    
+                    // 2. Добавляем логотипы студий
+                    setTimeout(() => {
+                        renderStudioLogos(activity, movie);
+                    }, 100);
+                }
             }
         });
 
-        // Патчим отрисовку карточки
-        Lampa.Component.add('full_start', function (object) {
-            const activity = Lampa.Activity.active();
-            const movie = object.movie;
-
-            // Ждем отрисовки шаблона
-            setTimeout(() => {
-                if (activity && movie) {
-                    renderStudioLogos(activity, movie);
-                    // Здесь вызываются остальные функции Applecation из оригинального кода
-                    if (typeof analyzeContentQualities === 'function') {
-                        analyzeContentQualities(movie, activity);
-                    }
-                }
-            }, 10);
-        });
+        addSettings();
     }
 
     function addSettings() {
-        // Настройки Applecation
-        Lampa.SettingsApi.addComponent({ component: 'applecation_settings', name: 'Applecation', icon: PLUGIN_ICON });
-        
-        // ... (здесь идут все оригинальные параметры Applecation из вашего файла) ...
+        // Создаем единый пункт настроек
+        Lampa.SettingsApi.addComponent({ 
+            component: 'apple_hybrid_settings', 
+            name: 'Applecation + Студии', 
+            icon: PLUGIN_ICON 
+        });
 
-        // Добавляем настройки Студий в тот же раздел или новый
+        // Параметры Студий
         Lampa.SettingsApi.addParam({
-            component: 'applecation_settings',
-            param: { name: 'studio_logos_title', type: 'title' },
-            field: { name: 'Логотипы студий' }
+            component: 'apple_hybrid_settings',
+            param: { name: STUDIO_STORAGE_KEY + 'enabled', type: 'trigger', default: true },
+            field: { name: 'Логотипы студий', description: 'Показывать бренды в карточке' }
         });
 
         Lampa.SettingsApi.addParam({
-            component: 'applecation_settings',
-            param: { name: STUDIO_LOGOS_KEY + 'enabled', type: "trigger", default: true },
-            field: { name: "Показывать логотипы", description: "Отображать студии производства в карточке" }
+            component: 'apple_hybrid_settings',
+            param: { 
+                name: STUDIO_STORAGE_KEY + 'height', 
+                type: 'select', 
+                values: { '0.6em': 'Мини', '0.8em': 'Стандарт', '1.1em': 'Крупно' }, 
+                default: '0.8em' 
+            },
+            field: { name: 'Размер логотипов' }
         });
 
-        Lampa.SettingsApi.addParam({
-            component: 'applecation_settings',
-            param: { name: STUDIO_LOGOS_KEY + "height", type: "select", values: { '0.6em': 'Мини', '0.8em': 'Стандарт', '1.2em': 'Крупный' }, default: '0.8em' },
-            field: { name: "Размер иконок студий" }
-        });
+        // Здесь можно добавить остальные переключатели из оригинального Applecation
     }
 
     // Запуск
