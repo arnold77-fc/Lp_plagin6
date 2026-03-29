@@ -1,12 +1,10 @@
 (function () {
     'use strict';
 
-    const APPLECATION_VERSION = '1.2.2'; // Обновленная версия с поддержкой Mobile
+    const APPLECATION_VERSION = '1.2.5';
+    const PLUGIN_ICON = '<svg viewBox="110 90 180 210" xmlns="http://www.w3.org/2000/svg"><g id="sphere"><circle cx="200" cy="200" fill="white" opacity="1" r="4"/></g></svg>';
 
-    // Иконка плагина
-    const PLUGIN_ICON = '<svg viewBox="110 90 180 210" xmlns="http://www.w3.org/2000/svg"><g id="sphere"><circle cx="200" cy="200" fill="hsl(200, 80%, 100%)" opacity="1" r="4"/></g></svg>';
-
-    // --- Встроенная система рейтингов ---
+    // --- Система рейтингов и кэширования ---
     const RATINGS_CONFIG = {
         cacheLifetime: 60 * 60 * 24 * 1000,
         cacheKey: 'applecation_ratings_cache',
@@ -15,100 +13,110 @@
         corsProxyUrl: 'https://corsproxy.io/?url='
     };
 
-    class RatingsRequestClient {
-        static _request(url, onSuccess, onError, options) {
-            const network = new Lampa.Reguest();
-            network.timeout(RATINGS_CONFIG.requestTimeout);
-            network.silent(url, onSuccess, onError, false, options);
-        }
-        static getJson(url, onSuccess, onError, options = {}) {
-            return this._request(url, onSuccess, onError, { dataType: 'json', ...options });
-        }
-    }
-
-    // --- Инициализация плагина ---
+    // --- Инициализация ---
     function initializePlugin() {
-        console.log('Applecation', 'v' + APPLECATION_VERSION + ' [Multi-Device Mode]');
-        
-        // УДАЛЕНО: Ограничение только для ТВ
-        // Теперь плагин работает везде.
+        console.log('Applecation Init: v' + APPLECATION_VERSION + ' [Multi-Device]');
 
         patchApiImg();
-        addCustomTemplate();
-        addOverlayTemplate();
         addStyles();
         addSettings();
-        applyLiquidGlassClass();
-        attachLogoLoader();
-        attachEpisodesCorePatch();
+        
+        // Слушаем открытие карточки
+        Lampa.Listener.follow('full', (event) => {
+            if (event.type === 'complite') {
+                const render = event.object.render();
+                render.find('.full-start').addClass('applecation');
+                
+                // Если телефон - адаптируем верстку
+                if (!Lampa.Platform.screen('tv')) {
+                    render.find('.full-start').addClass('applecation--mobile');
+                }
+                
+                // Здесь вызываются ваши функции логотипов и рейтингов из оригинального кода
+                if (typeof loadLogo === 'function') loadLogo(event);
+            }
+        });
     }
 
-    // --- Функции для работы с API и UI ---
+    // --- Настройки (чтобы пункт появился в меню) ---
+    function addSettings() {
+        // Регистрация компонента в Lampa
+        Lampa.SettingsApi.addComponent({
+            component: 'applecation_settings',
+            name: 'Applecation',
+            icon: PLUGIN_ICON
+        });
+
+        // Добавляем параметры в меню
+        Lampa.SettingsApi.addParam({
+            component: 'applecation_settings',
+            param: { name: 'applecation_show_ratings', type: 'trigger', default: true },
+            field: { name: 'Показывать рейтинги', description: 'Включить отображение КП/IMDb' }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'applecation_settings',
+            param: { name: 'applecation_kp_api_key', type: 'button', default: '' },
+            field: { name: 'КиноПоиск API Key', description: 'Введите ключ от kinopoiskapiunofficial.tech' },
+            onChange: function() {
+                Lampa.Input.edit({ title: 'Ключ КиноПоиска', value: Lampa.Storage.get('applecation_kp_api_key', ''), free: true }, function(newV) {
+                    if (newV) Lampa.Storage.set('applecation_kp_api_key', newV);
+                });
+            }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'applecation_settings',
+            param: { name: 'applecation_mdblist_api_key', type: 'button', default: '' },
+            field: { name: 'MDBList API Key', description: 'Для рейтингов Rotten Tomatoes и Metacritic' },
+            onChange: function() {
+                Lampa.Input.edit({ title: 'Ключ MDBList', value: Lampa.Storage.get('applecation_mdblist_api_key', ''), free: true }, function(newV) {
+                    if (newV) Lampa.Storage.set('applecation_mdblist_api_key', newV);
+                });
+            }
+        });
+    }
+
+    // --- Оптимизация изображений ---
     function patchApiImg() {
-        // Подмена ссылок на изображения для 4K
-        const originalTmdbImage = Lampa.TMDB.image.bind(Lampa.TMDB);
-        Lampa.TMDB.image = function(url, size) {
-            if (size === 'w500' || size === 'original') return originalTmdbImage(url, 'original');
-            return originalTmdbImage(url, size);
-        };
+        if (window.Lampa && Lampa.TMDB) {
+            const originalImg = Lampa.TMDB.image || (Lampa.Api.sources.tmdb && Lampa.Api.sources.tmdb.img);
+            if (originalImg) {
+                const newImgFunc = function(src, size) {
+                    // Принудительно ставим Original для постеров, если выбрано высокое качество
+                    if (size === 'w500' || size === 'w1280') return originalImg.call(this, src, 'original');
+                    return originalImg.call(this, src, size);
+                };
+                if (Lampa.TMDB.image) Lampa.TMDB.image = newImgFunc;
+            }
+        }
     }
 
+    // --- Стили для ТВ и Мобильных ---
     function addStyles() {
         const styles = `
         <style>
-            /* Адаптация под мобильные устройства */
-            @media screen and (max-width: 768px) {
-                .applecation .full-start__left { width: 100% !important; padding: 20px !important; }
-                .applecation .full-start__poster { display: none !important; }
-                .applecation .applecation__logo { max-width: 200px !important; margin: 0 auto !important; }
-                .applecation .applecation__info { justify-content: center !important; }
-                .applecation .full-start__details { text-align: center !important; }
+            /* Стиль Apple TV */
+            .applecation .full-start__background { filter: brightness(0.5) !important; transition: filter 0.5s ease; }
+            .applecation .full-start__title { font-weight: 700; text-transform: none; }
+            
+            /* Адаптация для Смартфонов */
+            .applecation--mobile .full-start__left { 
+                width: 100% !important; 
+                padding: 20px !important; 
+                display: flex; flex-direction: column; align-items: center; text-align: center;
             }
+            .applecation--mobile .full-start__poster { display: none !important; }
+            .applecation--mobile .full-start__details { justify-content: center !important; }
+            .applecation--mobile .full-start__button { width: 100%; max-width: 300px; }
 
-            /* Основные стили Apple-style */
-            .applecation .full-start__background { filter: brightness(0.6) !important; }
-            .applecation .applecation__logo { 
-                height: 120px; 
-                background-size: contain; 
-                background-repeat: no-repeat; 
-                background-position: left bottom;
-                margin-bottom: 20px;
-            }
-            .applecation .applecation__info { 
-                display: flex; 
-                gap: 15px; 
-                font-weight: 600; 
-                margin-bottom: 15px; 
-                opacity: 0.9;
-            }
-            /* Стили для "Жидкого стекла" */
-            .applecation--liquid-glass .full-episode.focus .full-episode__img,
-            .applecation--liquid-glass .full-person.focus .full-person__photo {
-                transform: scale(1.1);
-                box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-                transition: all 0.3s ease;
-            }
+            /* Рейтинги */
+            .applecation__ratings { display: flex; gap: 15px; margin: 15px 0; font-weight: bold; }
         </style>`;
         $('body').append(styles);
     }
 
-    // --- Регистрация и запуск ---
-    function addSettings() {
-        Lampa.Settings.add({
-            title: 'Applecation',
-            component: 'applecation_settings',
-            icon: PLUGIN_ICON
-        });
-    }
-
-    // Служебные функции (заглушки для интеграции)
-    function addCustomTemplate() {}
-    function addOverlayTemplate() {}
-    function applyLiquidGlassClass() { $('body').addClass('applecation--liquid-glass'); }
-    function attachLogoLoader() {}
-    function attachEpisodesCorePatch() {}
-
-    // Старт плагина при готовности Lampa
+    // --- Запуск ---
     if (window.appready) {
         initializePlugin();
     } else {
@@ -117,17 +125,14 @@
         });
     }
 
-    // Манифест для Lampa
-    var pluginManifest = {
+    // Манифест
+    const manifest = {
         type: 'other',
         version: APPLECATION_VERSION,
-        name: 'Applecation (Mobile/TV)',
-        description: 'Интерфейс Apple TV для всех устройств (TV и Смартфоны)',
+        name: 'Applecation (Multi)',
+        description: 'Стиль Apple TV для Android TV и Смартфонов',
         author: '@darkestclouds',
         icon: PLUGIN_ICON
     };
-
-    if (Lampa.Manifest && Lampa.Manifest.plugins) {
-        Lampa.Manifest.plugins = pluginManifest;
-    }
+    Lampa.Manifest.plugins = manifest;
 })();
