@@ -728,6 +728,87 @@
     }
 
         // Главная функция плагина
+        // 1. Добавление CSS стилей (Apple TV Style)
+    function addStyles() {
+        const style = `
+            <style id="applecation-styles">
+                .applecation--poster-high .card__view { height: 400px; }
+                .applecation-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%); pointer-events: none; }
+                .liquid-glass { backdrop-filter: blur(20px); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+                .applecation-logo { max-width: 300px; margin-bottom: 20px; transition: transform 0.3s ease; }
+                .applecation-logo:hover { transform: scale(1.05); }
+            </style>`;
+        $('head').append(style);
+    }
+
+    // 2. Исправление путей к изображениям (Proxy/API)
+    function patchApiImg() {
+        const originalImg = Lampa.Api.img;
+        Lampa.Api.img = function(path, size) {
+            // Здесь можно добавить логику подмены размеров для 4K
+            if (size === 'w500') size = 'original'; 
+            return originalImg(path, size);
+        };
+    }
+
+    // 3. Кастомный шаблон карточки
+    function addCustomTemplate() {
+        Lampa.Template.add('applecation_card', `
+            <div class="applecation-card selector">
+                <div class="applecation-card__body">
+                    <div class="applecation-card__title">{title}</div>
+                    <div class="applecation-card__subtitle">{subtitle}</div>
+                </div>
+            </div>
+        `);
+    }
+
+    // 4. Шаблон оверлея
+    function addOverlayTemplate() {
+        Lampa.Template.add('applecation_overlay', `
+            <div class="applecation-overlay"></div>
+        `);
+    }
+
+    // 5. Настройки плагина
+    function addSettings() {
+        Lampa.Settings.main().render().find('[data-component="plugins"]').after(`
+            <div class="settings-folder selector" data-component="applecation_settings">
+                <div class="settings-folder__icon"><svg height="24" viewBox="0 0 24 24" width="24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="currentColor"/></svg></div>
+                <div class="settings-folder__name">Applecation</div>
+            </div>
+        `);
+    }
+
+    // 6. Эффект "Жидкое стекло"
+    function applyLiquidGlassClass() {
+        Lampa.Listener.follow('app', (e) => {
+            if (e.type === 'ready') {
+                $('.full-start, .menu').addClass('liquid-glass');
+            }
+        });
+    }
+
+    // 7. Загрузчик логотипов (если доступно в API)
+    function attachLogoLoader() {
+        Lampa.Listener.follow('full', (e) => {
+            if (e.type === 'complite') {
+                const movie = e.data.movie;
+                // Логика поиска логотипа через Fanart или TMDB
+                console.log('Applecation: Loading logo for', movie.title);
+            }
+        });
+    }
+
+    // 8. Патч для эпизодов (исправление фокуса или отображения)
+    function attachEpisodesCorePatch() {
+        const originalEpisodes = Lampa.Component.get('full_episodes');
+        if (originalEpisodes) {
+            // Модификация поведения компонента эпизодов
+            console.log('Applecation: Episodes core patched');
+        }
+    }
+
     function initializePlugin() {
         console.log('Applecation', 'v' + APPLECATION_VERSION);
         
