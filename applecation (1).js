@@ -728,13 +728,10 @@
     }
 
     // Главная функция плагина
-    function initializePlugin() {
+        function initializePlugin() {
         console.log('Applecation', 'v' + APPLECATION_VERSION);
         
-        if (!Lampa.Platform.screen('tv')) {
-            console.log('Applecation', 'TV mode only');
-            return;
-        }
+        // УДАЛЕНО ограничение if (!Lampa.Platform.screen('tv')), чтобы работало везде
 
         patchApiImg();
         addCustomTemplate();
@@ -742,9 +739,18 @@
         addStyles();
         addSettings();
         applyLiquidGlassClass();
+        applyDeviceMode(); // Добавлена активация выбранного режима
         attachLogoLoader();
         attachEpisodesCorePatch();
     }
+
+    // Добавьте эту новую функцию сразу после initializePlugin
+    function applyDeviceMode() {
+        const mode = Lampa.Storage.get('applecation_device_mode', 'tv');
+        $('body').removeClass('applecation--tv applecation--phone');
+        $('body').addClass('applecation--' + mode);
+    }
+
 
     /**
      * Патч логики линии эпизодов (как отдельный episodes_core_patch.js, но интегрировано в Applecation)
