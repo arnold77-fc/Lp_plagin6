@@ -727,14 +727,15 @@
         });
     }
 
-    // Главная функция плагина
+        // Главная функция плагина
     function initializePlugin() {
         console.log('Applecation', 'v' + APPLECATION_VERSION);
         
-        if (!Lampa.Platform.screen('tv')) {
-            console.log('Applecation', 'TV mode only');
-            return;
-        }
+        // Удаляем или комментируем строгую проверку на ТВ
+        // if (!Lampa.Platform.screen('tv')) {
+        //     console.log('Applecation', 'TV mode only');
+        //     return;
+        // }
 
         patchApiImg();
         addCustomTemplate();
@@ -745,6 +746,7 @@
         attachLogoLoader();
         attachEpisodesCorePatch();
     }
+
 
     /**
      * Патч логики линии эпизодов (как отдельный episodes_core_patch.js, но интегрировано в Applecation)
