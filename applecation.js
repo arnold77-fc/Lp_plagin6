@@ -898,8 +898,30 @@
         }catch(e){}
     }
 
-    // Переводы для настроек
+        // Переводы для настроек
     const translations = {
+        mobile_layout: {
+            ru: 'Адаптация для телефонов',
+            en: 'Mobile layout',
+            uk: 'Адаптація для телефонів',
+            be: 'Адаптацыя для тэлефонаў',
+            bg: 'Адаптация за телефони',
+            cs: 'Adaptace pro telefony',
+            he: 'התאמה לטלפונים',
+            pt: 'Adaptação para telefones',
+            zh: '手机适配'
+        },
+        mobile_layout_desc: {
+            ru: 'Перестраивает интерфейс карточки для удобства на малых экранах',
+            en: 'Rebuilds the card interface for convenience on small screens',
+            uk: 'Перебудовує інтерфейс картки для зручності на малих екранах',
+            be: 'Перабудоўвае інтэрфейс карткі для зручнасці на малых экранах',
+            bg: 'Преустройва интерфейса на картата за удобство на малки екрани',
+            cs: 'Přestaví rozhraní karty pro pohodlí na malých obrazovkách',
+            he: 'בונה מחדש את ממשק הכרטיס לנוחות במסכים קטנים',
+            pt: 'Reconstrói a interface do cartão para conveniência em telas pequenas',
+            zh: '为方便在小屏幕上使用，重建卡片界面'
+        },
         show_ratings: {
             ru: 'Показывать рейтинги',
             en: 'Show ratings',
