@@ -900,27 +900,17 @@
 
         // Переводы для настроек
     const translations = {
-        mobile_layout: {
+                mobile_layout: {
             ru: 'Адаптация для телефонов',
             en: 'Mobile layout',
-            uk: 'Адаптація для телефонів',
-            be: 'Адаптацыя для тэлефонаў',
-            bg: 'Адаптация за телефони',
-            cs: 'Adaptace pro telefony',
-            he: 'התאמה לטלפונים',
-            pt: 'Adaptação para telefones',
-            zh: '手机适配'
+            uk: 'Адаптація для телефонів'
         },
         mobile_layout_desc: {
-            ru: 'Перестраивает интерфейс карточки для удобства на малых экранах',
-            en: 'Rebuilds the card interface for convenience on small screens',
-            uk: 'Перебудовує інтерфейс картки для зручності на малих екранах',
-            be: 'Перабудоўвае інтэрфейс карткі для зручнасці на малых экранах',
-            bg: 'Преустройва интерфейса на картата за удобство на малки екрани',
-            cs: 'Přestaví rozhraní karty pro pohodlí na malých obrazovkách',
-            he: 'בונה מחדש את ממשק הכרטיס לנוחות במסכים קטנים',
-            pt: 'Reconstrói a interface do cartão para conveniência em telas pequenas',
-            zh: '为方便在小屏幕上使用，重建卡片界面'
+            ru: 'Подгоняет карточку фильма под вертикальный экран смартфона',
+            en: 'Adapts the movie card for vertical smartphone screens',
+            uk: 'Підганяє картку фільму під вертикальний екран смартфона'
+        },
+
         },
         show_ratings: {
             ru: 'Показывать рейтинги',
@@ -1491,9 +1481,14 @@
     // Добавляем настройки плагина
     function addSettings() {
         // Инициализируем значения по умолчанию
+        if (Lampa.Storage.get('applecation_mobile_layout') === undefined) {
+            Lampa.Storage.set('applecation_mobile_layout', false);
+        }
+
         if (Lampa.Storage.get('applecation_show_ratings') === undefined) {
             Lampa.Storage.set('applecation_show_ratings', false);
         }
+
         if (Lampa.Storage.get('applecation_ratings_source') === undefined) {
             Lampa.Storage.set('applecation_ratings_source', 'external');
         }
@@ -1553,6 +1548,23 @@
         });
         
         // Добавляем информацию о плагине
+                Lampa.SettingsApi.addParam({
+            component: 'applecation_settings',
+            param: {
+                name: 'applecation_mobile_layout',
+                type: 'trigger',
+                default: false
+            },
+            field: {
+                name: t('mobile_layout'),
+                description: t('mobile_layout_desc')
+            },
+            onChange: function(value) {
+                Lampa.Storage.set('applecation_mobile_layout', value);
+                location.reload(); // Перезагрузка для применения стилей
+            }
+        });
+
         Lampa.SettingsApi.addParam({
             component: 'applecation_settings',
             param: {
