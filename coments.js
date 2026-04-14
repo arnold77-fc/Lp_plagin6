@@ -989,12 +989,13 @@
             try {
                 var focusedRemoved = false;
                 
+                // Удаляем старые блоки, если они есть
                 $('.items-line').each(function() {
                     var el = $(this);
                     var title = el.find('.items-line__title').text().trim();
                     var hasAddBtn = el.find('.full-review-add').length > 0;
                     
-                    if (title === 'РљРѕРјРµРЅС‚Р°СЂС–' || hasAddBtn) {
+                    if (title === 'Комментарии' || hasAddBtn) {
                         if (el.find('.focus').length > 0 || el.hasClass('focus')) focusedRemoved = true;
                         el.remove();
                     }
@@ -1002,16 +1003,32 @@
 
                 if ($('.ua-comments-slider').length && fetchedComments.length > 0) return;
 
+                // --- ПРАВКА ДЛЯ APPLECATION ---
                 var targetBlock = null;
-                $('.full-descr__details').each(function() {
-                    if ($(this).find('.full-descr__info, .full--budget, .full--countries').length > 0) targetBlock = $(this);
-                });
+                
+                // 1. Пытаемся найти контейнер Applecation (инфо-панель или оверлей)
+                var appleContainer = $('.applecation__container, .applecation__overlay, .applecation__footer');
+                
+                if (appleContainer.length) {
+                    targetBlock = appleContainer.last();
+                } else {
+                    // 2. Если Applecation не активен, ищем стандартные блоки Lampa
+                    $('.full-descr__details').each(function() {
+                        if ($(this).find('.full-descr__info, .full--budget, .full--countries').length > 0) targetBlock = $(this);
+                    });
+                }
+                
+                // Если совсем ничего не нашли, пробуем привязаться к началу описания
+                if (!targetBlock || !targetBlock.length) targetBlock = $('.full-start');
+                
                 if (!targetBlock || !targetBlock.length) return; 
+                // ------------------------------
 
                 var root = $('.ua-comments-root');
                 if (!root.length) {
                     root = $('<div class="ua-comments-root items-line"></div>');
-                    targetBlock.before(root);
+                    // Используем after вместо before для Applecation, чтобы блок был внизу
+                    targetBlock.after(root);
                 }
 
                 if (!isSearchFinished || (isSearchFinished && fetchedComments.length === 0)) {
@@ -1031,6 +1048,8 @@
                     root.empty(); 
                     var slider = $('<div class="ua-comments-slider"></div>');
 
+                    // ... (остальной код метода inject остается без изменений)
+                    
                     slider.on('touchstart', function(e) {
                         if (!e.originalEvent || !e.originalEvent.touches) return;
                         $(this).data('touchStartX', e.originalEvent.touches[0].clientX);
@@ -1085,7 +1104,6 @@
                 }
             } catch (err) { console.error('UaComentsY Inject Error:', err); }
         };
-    }
 
     function startPlugin() {
         if (window.uacomentsy_plugin_started) return;
